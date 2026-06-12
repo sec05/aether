@@ -21,7 +21,7 @@ include(FetchContent)
 
 FetchContent_Declare(
   eigen
-  URL https://github.com/eigenteam/eigen-git-mirror/archive/refs/heads/master.tar.gz
+  URL https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz
   DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 

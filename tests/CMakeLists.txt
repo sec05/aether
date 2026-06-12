@@ -1,7 +1,7 @@
 add_executable(aether_tests test_version.cpp)
 
 target_include_directories(aether_tests PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(aether_tests PRIVATE GTest::gtest_main)
+target_link_libraries(aether_tests PRIVATE GTest::gtest_main Eigen3::Eigen)
 
 include(GoogleTest)
 gtest_discover_tests(aether_tests)
