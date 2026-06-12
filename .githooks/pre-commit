@@ -1,18 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if ! command -v clang-format >/dev/null 2>&1; then
-  echo "clang-format not found; skipping format check" >&2
-  exit 0
-fi
-
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
-mapfile -t files < <(git diff --cached --name-only --diff-filter=ACM | grep -E '\\.(cpp|hpp|cc|cxx|h)$' || true)
+mapfile -t files < <(git diff --cached --name-only --diff-filter=ACM \
+  | grep -E '\.(cpp|hpp|cc|cxx|h)$' || true)
 
 if [ "${#files[@]}" -eq 0 ]; then
   exit 0
 fi
 
-clang-format --dry-run --Werror "${files[@]}"
+status=0
+
+# 1. Formatting (clang-format).
+if command -v clang-format >/dev/null 2>&1; then
+  clang-format --dry-run --Werror "${files[@]}" || status=1
+else
+  echo "clang-format not found; skipping format check" >&2
+fi
+
+# 2. Google style (cpplint, via lint.sh).
+"$repo_root/lint.sh" "${files[@]}" || status=1
+
+exit $status
