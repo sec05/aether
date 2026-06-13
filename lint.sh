@@ -7,7 +7,7 @@ cd "$repo_root"
 if [ "$#" -gt 0 ]; then
   files=("$@")
 else
-  mapfile -t files < <(find include src -type f \
+  mapfile -t files < <(find include src tests -type f \
     \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \))
 fi
 
@@ -15,4 +15,4 @@ if [ "${#files[@]}" -eq 0 ]; then
   exit 0
 fi
 
-python3 cpplint.py --linelength=100 "${files[@]}"
+python3 cpplint.py --includeorder=standardcfirst --linelength=100 "${files[@]}"

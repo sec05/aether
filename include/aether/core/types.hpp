@@ -1,3 +1,4 @@
+// Copyright 2026 Spencer Evans-Cole
 #pragma once
 
 #include <algorithm>
@@ -7,13 +8,15 @@
 #include <functional>
 #include <limits>
 #include <string>
+#include <utility>
+#include <vector>
 
 #if __has_include(<expected>) && defined(__cpp_lib_expected)
-  #include <expected>
-  #define AETHER_HAS_STD_EXPECTED 1
+#include <expected>
+#define AETHER_HAS_STD_EXPECTED 1
 #else
-  #define AETHER_HAS_STD_EXPECTED 0
-  // Not on C++23: alias Expected to a backport (e.g. tl::expected) instead.
+#define AETHER_HAS_STD_EXPECTED 0
+// Not on C++23: alias Expected to a backport (e.g. tl::expected) instead.
 #endif
 
 namespace aether {
@@ -24,8 +27,7 @@ using Real = double;
 
 inline constexpr Real kEpsilon = std::numeric_limits<Real>::epsilon();
 
-inline bool nearly_equal(Real a, Real b,
-                         Real rel = 1e-9, Real abs_tol = 1e-12) noexcept {
+inline bool nearly_equal(Real a, Real b, Real rel = 1e-9, Real abs_tol = 1e-12) noexcept {
   return std::abs(a - b) <= std::max(abs_tol, rel * std::max(std::abs(a), std::abs(b)));
 }
 
@@ -38,7 +40,7 @@ inline constexpr Index kInvalidIndex = -1;
 // swapped.
 template <typename Tag>
 class TypedIndex {
-public:
+ public:
   using value_type = Index;
 
   constexpr TypedIndex() noexcept = default;
@@ -50,20 +52,31 @@ public:
 
   friend constexpr auto operator<=>(TypedIndex, TypedIndex) = default;
 
-  constexpr TypedIndex& operator++() noexcept { ++value_; return *this; }
-  constexpr TypedIndex operator++(int) noexcept { auto t = *this; ++value_; return t; }
+  constexpr TypedIndex &operator++() noexcept {
+    ++value_;
+    return *this;
+  }
+  constexpr TypedIndex operator++(int) noexcept {
+    auto t = *this;
+    ++value_;
+    return t;
+  }
 
-private:
+ private:
   Index value_ = kInvalidIndex;
 };
 
-struct NodeTag; struct CellTag; struct FaceTag; struct EdgeTag; struct DofTag;
+struct NodeTag;
+struct CellTag;
+struct FaceTag;
+struct EdgeTag;
+struct DofTag;
 
 using NodeIndex = TypedIndex<NodeTag>;
 using CellIndex = TypedIndex<CellTag>;
 using FaceIndex = TypedIndex<FaceTag>;
 using EdgeIndex = TypedIndex<EdgeTag>;
-using DofIndex  = TypedIndex<DofTag>;
+using DofIndex = TypedIndex<DofTag>;
 
 // ---- Error handling -------------------------------------------------------
 
@@ -92,7 +105,7 @@ inline std::unexpected<Error> fail(ErrorCode code, std::string msg = {}) {
 }
 #endif
 
-} // namespace aether
+}  // namespace aether
 
 // Hash so typed indices work as keys in unordered_map / unordered_set.
 template <typename Tag>

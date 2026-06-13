@@ -1,11 +1,15 @@
-add_executable(aether_tests test_version.cpp)
-
-target_include_directories(aether_tests PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(aether_tests PRIVATE GTest::gtest_main Eigen3::Eigen)
+file(GLOB AETHER_TEST_SOURCES CONFIGURE_DEPENDS
+     "${CMAKE_CURRENT_SOURCE_DIR}/test_*.cpp")
 
 include(GoogleTest)
-gtest_discover_tests(aether_tests)
 
-if(AETHER_CLANG_TIDY)
-  set_target_properties(aether_tests PROPERTIES CXX_CLANG_TIDY "${AETHER_CLANG_TIDY}")
-endif()
+foreach(test_src ${AETHER_TEST_SOURCES})
+  get_filename_component(test_name ${test_src} NAME_WE)
+  add_executable(${test_name} ${test_src})
+  target_include_directories(${test_name} PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  target_link_libraries(${test_name} PRIVATE aether_mesh aether_elements GTest::gtest_main Eigen3::Eigen)
+  if(AETHER_CLANG_TIDY)
+    set_target_properties(${test_name} PROPERTIES CXX_CLANG_TIDY "${AETHER_CLANG_TIDY}")
+  endif()
+  gtest_discover_tests(${test_name})
+endforeach()

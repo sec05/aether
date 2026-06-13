@@ -1,3 +1,4 @@
+// Copyright 2026 Spencer Evans-Cole
 #pragma once
 
 #include <string>
@@ -14,4 +15,4 @@ inline std::string version_string() {
          std::to_string(kVersionPatch);
 }
 
-} // namespace aether
+}  // namespace aether
