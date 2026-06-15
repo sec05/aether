@@ -1,5 +1,7 @@
 // Copyright 2026 Spencer Evans-Cole
 
+#include <vector>
+
 #include "aether/mesh/square.hpp"
 
 namespace aether::mesh {
@@ -29,5 +31,18 @@ Square::Square(int degree, int num_nodes) : Mesh(degree, num_nodes) {
       triangles_.push_back({NodeIndex{n1}, NodeIndex{n3}, NodeIndex{n2}});
     }
   }
+
+  num_elements_ = static_cast<int>(triangles_.size());
 }
+
+std::array<NodeIndex, 3> Square::element_node_indices(int element_index) const {
+  const auto& tri = triangles_[element_index];
+  return {tri[0], tri[1], tri[2]};
+}
+
+std::vector<Vec2> Square::element_nodes(int element_index) const {
+  const auto idx = element_node_indices(element_index);
+  return {nodes_[idx[0].get()], nodes_[idx[1].get()], nodes_[idx[2].get()]};
+}
+
 }  // namespace aether::mesh

@@ -18,9 +18,16 @@ std::array<Vec2, 3> P1Element::shape_grad(const Vec2 &point) const {
 }
 
 std::vector<std::pair<Vec2, Real>> P1Element::quadrature_points(int order) const {
-  // Since the shape functions are linear, a single quadrature point at the centroid
-  // is sufficient for exact integration of polynomials up to degree 2.
-  return {{Vec2(1.0 / 3.0, 1.0 / 3.0), 0.5}};  // (point, weight)
+  // Weights sum to 1/2 = area of the reference triangle.
+  if (order <= 1) {
+    // 1-point centroid rule: exact to degree 1 (enough for P1 stiffness).
+    return {{Vec2(1.0 / 3.0, 1.0 / 3.0), 0.5}};
+  }
+  // 3-point rule: exact to degree 2 (mass matrix, linear load vectors).
+  const Real w = 1.0 / 6.0;
+  return {{Vec2(1.0 / 6.0, 1.0 / 6.0), w},
+          {Vec2(2.0 / 3.0, 1.0 / 6.0), w},
+          {Vec2(1.0 / 6.0, 2.0 / 3.0), w}};
 }
 
 }  // namespace aether::elements

@@ -19,11 +19,15 @@ class Mesh {
   virtual ~Mesh() = default;
   int degree() const { return degree_; }
   int num_nodes() const { return num_nodes_; }
+  int num_elements() const { return num_elements_; }
   const std::vector<Vec2> &nodes() const { return nodes_; }
+  virtual std::array<NodeIndex, 3> element_node_indices(int element_index) const = 0;
+  virtual std::vector<Vec2> element_nodes(int element_index) const = 0;
 
  protected:
   int degree_;
   int num_nodes_;
   std::vector<Vec2> nodes_;
+  int num_elements_;
 };
 }  // namespace aether::mesh

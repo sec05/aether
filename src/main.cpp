@@ -3,8 +3,13 @@
 
 #include <spdlog/spdlog.h>
 
+#include <Eigen/Sparse>
+#include <Eigen/Dense>
+
 #include "aether/mesh/square.hpp"
 #include "aether/version.hpp"
+#include "aether/assembly/assembler.hpp"
+#include "aether/elements/p1_element.hpp"
 
 int main() {
   spdlog::set_pattern("[%^%l%$] %v");
@@ -12,9 +17,17 @@ int main() {
   std::cout << aether::kProjectName << ' ' << aether::version_string() << '\n';
   aether::mesh::Square square_mesh(1, 16);
   spdlog::info("Created square mesh with {} nodes", square_mesh.num_nodes());
-  spdlog::info("Mesh nodes: {}", square_mesh.nodes().size());
-  for (const auto& node : square_mesh.nodes()) {
-    spdlog::info("Node at ({:.2f}, {:.2f})", node.x(), node.y());
-  }
+  spdlog::info("Num mesh nodes: {}", square_mesh.num_nodes());
+  spdlog::info("Num mesh elements: {}", square_mesh.num_elements());
+  aether::elements::P1Element ref_element;
+  aether::assembly::Assembler assembler(square_mesh, ref_element);
+  assembler.assemble();
+  spdlog::info("Assembled stiffness matrix with {} nonzeros",
+               assembler.stiffness_matrix()->nonZeros());
+  // print stiffness matrix for debugging
+  const Eigen::IOFormat fmt(4, 0, ", ", "\n", "[", "]");
+  std::ostringstream oss;
+  oss << Eigen::MatrixXd(*assembler.stiffness_matrix()).format(fmt);
+  spdlog::info("Stiffness matrix:\n{}", oss.str());
   return 0;
 }
