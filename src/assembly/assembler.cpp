@@ -25,6 +25,9 @@ void Assembler::assemble() {
 
   global_stiffness_matrix_.resize(n, n);
   global_stiffness_matrix_.setFromTriplets(triplets.begin(), triplets.end());  // sums duplicates
+
+  rhs_.resize(n);
+  rhs_.setZero();
 }
 
 Mat3 Assembler::local_stiffness_matrix(int element_index) const {
@@ -63,4 +66,14 @@ void Assembler::scatter(int element_index, const Mat3& local,
   }
 }
 
+void Assembler::homogeneous_dirichlet_bc(const std::vector<NodeIndex>& boundary_nodes) {
+  for (const auto& node : boundary_nodes) {
+    const int i = node.get();
+    global_stiffness_matrix_.coeffRef(i, i) = 1.0;  // K_ii = 1
+    for (Eigen::SparseMatrix<Real>::InnerIterator it(global_stiffness_matrix_, i); it; ++it) {
+      if (it.row() != i) it.valueRef() = 0.0;  // K_ij = 0 for j != i
+    }
+    rhs_(i) = 0.0;  // f_i = 0
+  }
+}
 }  // namespace aether::assembly

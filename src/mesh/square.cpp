@@ -45,4 +45,13 @@ std::vector<Vec2> Square::element_nodes(int element_index) const {
   return {nodes_[idx[0].get()], nodes_[idx[1].get()], nodes_[idx[2].get()]};
 }
 
+std::vector<Vec2> Square::boundary_nodes() const {
+  std::vector<Vec2> boundary;
+  for (const auto& node : nodes_) {
+    if (node.x() == 0.0 || node.x() == 1.0 || node.y() == 0.0 || node.y() == 1.0) {
+      boundary.push_back(node);
+    }
+  }
+  return boundary;
+}
 }  // namespace aether::mesh

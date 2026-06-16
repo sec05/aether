@@ -20,12 +20,15 @@ class Assembler {
   ~Assembler() = default;
   void assemble();
   const Eigen::SparseMatrix<Real>* stiffness_matrix() const { return &global_stiffness_matrix_; }
-  void scatter(int i, const Mat3& local_matrix, std::vector<Eigen::Triplet<Real>>* triplets) const;
+  const Eigen::VectorXd* rhs() const { return &rhs_; }
 
  private:
+  void homogeneous_dirichlet_bc(const std::vector<NodeIndex>& boundary_nodes);
+  void scatter(int i, const Mat3& local_matrix, std::vector<Eigen::Triplet<Real>>* triplets) const;
   Mat3 local_stiffness_matrix(int element_index) const;
   const mesh::Mesh& mesh_;
   const elements::ReferenceElement& ref_element_;
   Eigen::SparseMatrix<Real> global_stiffness_matrix_;
+  Eigen::VectorXd rhs_;
 };
 }  // namespace aether::assembly

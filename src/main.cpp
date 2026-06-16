@@ -29,5 +29,9 @@ int main() {
   std::ostringstream oss;
   oss << Eigen::MatrixXd(*assembler.stiffness_matrix()).format(fmt);
   spdlog::info("Stiffness matrix:\n{}", oss.str());
+  const Eigen::IOFormat rhs_fmt(4, 0, ", ", "\n", "[", "]");
+  std::ostringstream rhs_oss;
+  rhs_oss << assembler.rhs()->format(rhs_fmt);
+  spdlog::info("RHS vector:\n{}", rhs_oss.str());
   return 0;
 }
