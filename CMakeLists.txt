@@ -37,6 +37,12 @@ FetchContent_Declare(
   DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 
+FetchContent_Declare(
+  pugixml
+  URL https://github.com/zeux/pugixml/archive/refs/tags/v1.15.tar.gz
+  DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+
 set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
 set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -45,7 +51,7 @@ set(SPDLOG_BUILD_BENCH OFF CACHE BOOL "" FORCE)
 set(EIGEN_BUILD_TESTING OFF CACHE BOOL "" FORCE)
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 
-FetchContent_MakeAvailable(eigen spdlog googletest)
+FetchContent_MakeAvailable(eigen spdlog googletest pugixml)
 
 set(BUILD_TESTING ON CACHE BOOL "" FORCE)
 include(CTest)

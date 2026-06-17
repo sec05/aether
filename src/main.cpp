@@ -12,6 +12,8 @@
 #include "aether/assembly/assembler.hpp"
 #include "aether/elements/p1_element.hpp"
 #include "aether/solver/solver.hpp"
+#include "aether/output/output.hpp"
+
 int main() {
   spdlog::set_pattern("[%^%l%$] %v");
   spdlog::info("Starting {}", aether::kProjectName);
@@ -58,5 +60,10 @@ int main() {
 
   const double err_inf = (solution - u_exact).cwiseAbs().maxCoeff();
   spdlog::info("L_infty error: {:.2e}", err_inf);
+
+  aether::output::Output output;
+  output.write_solution_vtk("solution.vtu", square_mesh.nodes(), square_mesh.triangles(),
+                            {{"u", solution}});
+  spdlog::info("Wrote solution to solution.vtu");
   return 0;
 }
