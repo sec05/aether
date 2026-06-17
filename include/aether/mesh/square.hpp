@@ -13,7 +13,7 @@ class Square : public Mesh {
   std::vector<std::array<NodeIndex, 3>> triangles() const { return triangles_; }
   std::array<NodeIndex, 3> element_node_indices(int element_index) const override;
   std::vector<Vec2> element_nodes(int element_index) const override;
-  std::vector<Vec2> boundary_nodes() const override;
+  std::vector<NodeIndex> boundary_nodes() const override;
 
  private:
   // Square-specific data and methods can be added here.

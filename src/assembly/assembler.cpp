@@ -28,6 +28,14 @@ void Assembler::assemble() {
 
   rhs_.resize(n);
   rhs_.setZero();
+  // x^2 - y^2 test solution
+  std::vector<std::pair<NodeIndex, Real>> bcs;
+  for (const auto& node : mesh_.boundary_nodes()) {
+    Vec2 coord = mesh_.nodes()[node.get()];
+    Real value = std::pow(coord.x(), 2) - std::pow(coord.y(), 2);
+    bcs.emplace_back(node, value);
+  }
+  dirichlet_bc(bcs);
 }
 
 Mat3 Assembler::local_stiffness_matrix(int element_index) const {
@@ -66,14 +74,28 @@ void Assembler::scatter(int element_index, const Mat3& local,
   }
 }
 
-void Assembler::homogeneous_dirichlet_bc(const std::vector<NodeIndex>& boundary_nodes) {
-  for (const auto& node : boundary_nodes) {
-    const int i = node.get();
-    global_stiffness_matrix_.coeffRef(i, i) = 1.0;  // K_ii = 1
-    for (Eigen::SparseMatrix<Real>::InnerIterator it(global_stiffness_matrix_, i); it; ++it) {
-      if (it.row() != i) it.valueRef() = 0.0;  // K_ij = 0 for j != i
-    }
-    rhs_(i) = 0.0;  // f_i = 0
+void Assembler::dirichlet_bc(const std::vector<std::pair<NodeIndex, Real>>& bcs) {
+  const int n = global_stiffness_matrix_.rows();
+  std::vector<char> fixed(n, 0);
+  Eigen::VectorX<Real> g = Eigen::VectorX<Real>::Zero(n);
+  for (const auto& [node, value] : bcs) {
+    fixed[node.get()] = 1;
+    g[node.get()] = value;
   }
+
+  // 1) Lift constrained columns to the RHS, using the ORIGINAL matrix.
+  //    (g is zero on free dofs, so this only moves the K_FD * g_D terms.)
+  rhs_ -= global_stiffness_matrix_ * g;
+
+  // 2) Prescribe the value on each constrained row.
+  for (const auto& [node, value] : bcs) rhs_(node.get()) = value;
+
+  // 3) Symmetric elimination in one storage-order-agnostic sweep:
+  //    zero any entry whose row OR column is constrained; unit diagonal.
+  for (int c = 0; c < global_stiffness_matrix_.outerSize(); ++c)
+    for (Eigen::SparseMatrix<Real>::InnerIterator it(global_stiffness_matrix_, c); it; ++it)
+      if (fixed[it.row()] || fixed[it.col()])
+        it.valueRef() = (it.row() == it.col()) ? Real(1) : Real(0);
+  global_stiffness_matrix_.prune(aether::Real(0));
 }
 }  // namespace aether::assembly

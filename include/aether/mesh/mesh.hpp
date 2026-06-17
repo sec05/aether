@@ -23,7 +23,8 @@ class Mesh {
   const std::vector<Vec2> &nodes() const { return nodes_; }
   virtual std::array<NodeIndex, 3> element_node_indices(int element_index) const = 0;
   virtual std::vector<Vec2> element_nodes(int element_index) const = 0;
-  virtual std::vector<Vec2> boundary_nodes() const = 0;
+  virtual std::vector<NodeIndex> boundary_nodes() const = 0;
+  virtual Vec2 node(int node_index) const { return nodes_[node_index]; }
 
  protected:
   int degree_;

@@ -23,7 +23,7 @@ class Assembler {
   const Eigen::VectorXd* rhs() const { return &rhs_; }
 
  private:
-  void homogeneous_dirichlet_bc(const std::vector<NodeIndex>& boundary_nodes);
+  void dirichlet_bc(const std::vector<std::pair<NodeIndex, Real>>& bcs);
   void scatter(int i, const Mat3& local_matrix, std::vector<Eigen::Triplet<Real>>* triplets) const;
   Mat3 local_stiffness_matrix(int element_index) const;
   const mesh::Mesh& mesh_;

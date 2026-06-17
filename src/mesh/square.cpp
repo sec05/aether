@@ -45,11 +45,12 @@ std::vector<Vec2> Square::element_nodes(int element_index) const {
   return {nodes_[idx[0].get()], nodes_[idx[1].get()], nodes_[idx[2].get()]};
 }
 
-std::vector<Vec2> Square::boundary_nodes() const {
-  std::vector<Vec2> boundary;
-  for (const auto& node : nodes_) {
+std::vector<NodeIndex> Square::boundary_nodes() const {
+  std::vector<NodeIndex> boundary;
+  for (int i = 0; i < num_nodes_; ++i) {
+    const auto& node = nodes_[i];
     if (node.x() == 0.0 || node.x() == 1.0 || node.y() == 0.0 || node.y() == 1.0) {
-      boundary.push_back(node);
+      boundary.push_back(NodeIndex{i});
     }
   }
   return boundary;
