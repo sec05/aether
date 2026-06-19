@@ -4,6 +4,8 @@
 #include <set>
 #include <stdexcept>
 #include <vector>
+#include <cmath>
+#include <utility>
 
 #include <gtest/gtest.h>
 
@@ -175,3 +177,145 @@ TEST(QuadMesh, RejectsDegenerateCorners) {
   EXPECT_THROW(aether::mesh::Quad(1, 3, 3, degenerate), std::invalid_argument);
 }
 */
+
+namespace {
+const std::array<aether::Vec2, 4> kSquare4{{{0.0, 0.0}, {4.0, 0.0}, {4.0, 4.0}, {0.0, 4.0}}};
+
+// Corner cut [2,4]x[0,2]: square -> L-shape (reentrant corner at (2,2)).
+const std::array<aether::Vec2, 4> kCornerHole{{{2.0, 0.0}, {4.0, 0.0}, {4.0, 2.0}, {2.0, 2.0}}};
+
+// Centred hole [1,3]x[1,3]: square -> annulus (second boundary loop).
+const std::array<aether::Vec2, 4> kCenterHole{{{1.0, 1.0}, {3.0, 1.0}, {3.0, 3.0}, {1.0, 3.0}}};
+
+// Hole fully outside the domain: must be a no-op.
+const std::array<aether::Vec2, 4> kFarHole{
+    {{10.0, 10.0}, {12.0, 10.0}, {12.0, 12.0}, {10.0, 12.0}}};  // NOLINT
+}  // namespace
+
+// An explicit empty hole list must reproduce the plain grid (default-arg path).
+TEST(QuadMeshHoles, EmptyHolesMatchesPlainGrid) {
+  const int degree = 1, m = 5;
+  aether::mesh::Quad plain(degree, m, m, kSquare4);
+  aether::mesh::Quad empty(degree, m, m, kSquare4, {});
+
+  EXPECT_EQ(plain.num_nodes(), empty.num_nodes());
+  EXPECT_EQ(plain.triangles().size(), empty.triangles().size());
+  EXPECT_EQ(plain.boundary_nodes().size(), empty.boundary_nodes().size());
+}
+
+// A hole disjoint from the domain removes nothing.
+TEST(QuadMeshHoles, HoleOutsideDomainIsNoOp) {
+  const int degree = 1, m = 5;
+  aether::mesh::Quad quad(degree, m, m, kSquare4, {kFarHole});
+
+  EXPECT_EQ(quad.num_nodes(), m * m);
+  EXPECT_EQ(quad.triangles().size(), static_cast<std::size_t>(2 * (m - 1) * (m - 1)));
+  EXPECT_EQ(quad.boundary_nodes().size(), static_cast<std::size_t>(2 * m + 2 * m - 4));
+}
+
+// Corner hole drops the bottom-right quadrant: 4 of 16 cells -> 8 of 32
+// triangles gone; orphaned nodes (3,0),(4,0),(3,1),(4,1) -> 25-4=21 nodes.
+TEST(QuadMeshHoles, CornerHoleRemovesQuadrant) {
+  const int degree = 1, m = 5;
+  aether::mesh::Quad quad(degree, m, m, kSquare4, {kCornerHole});
+
+  EXPECT_EQ(quad.triangles().size(), static_cast<std::size_t>(24));
+  EXPECT_EQ(quad.num_nodes(), 21);
+  EXPECT_EQ(quad.nodes().size(), static_cast<std::size_t>(21));
+
+  // No surviving triangle has its centroid inside the open hole (2,4)x(0,2).
+  for (const auto& tri : quad.triangles()) {
+    const auto& a = quad.nodes()[tri[0].get()];
+    const auto& b = quad.nodes()[tri[1].get()];
+    const auto& c = quad.nodes()[tri[2].get()];
+    const aether::Real cx = (a.x() + b.x() + c.x()) / 3;
+    const aether::Real cy = (a.y() + b.y() + c.y()) / 3;
+    EXPECT_FALSE(cx > 2.0 && cx < 4.0 && cy > 0.0 && cy < 2.0);
+  }
+}
+
+// The cut must turn up as new boundary: the reentrant corner and the two cut
+// edges were interior on the full square. L-shape outline has 16 boundary nodes.
+TEST(QuadMeshHoles, CornerHoleAddsReentrantBoundary) {
+  const int degree = 1, m = 5;
+  aether::mesh::Quad quad(degree, m, m, kSquare4, {kCornerHole});
+
+  std::set<std::pair<int, int>> bd;
+  for (const auto& n : quad.boundary_nodes()) {
+    const auto& p = quad.nodes()[n.get()];
+    bd.insert({static_cast<int>(std::lround(p.x())), static_cast<int>(std::lround(p.y()))});
+  }
+
+  EXPECT_EQ(quad.boundary_nodes().size(), static_cast<std::size_t>(16));
+  EXPECT_EQ(bd.size(), static_cast<std::size_t>(16));  // no duplicates
+
+  EXPECT_TRUE(bd.count({2, 2}));   // reentrant corner
+  EXPECT_TRUE(bd.count({2, 1}));   // vertical cut x=2, interior on full square
+  EXPECT_TRUE(bd.count({3, 2}));   // horizontal cut y=2, interior on full square
+  EXPECT_FALSE(bd.count({1, 1}));  // genuinely interior, must stay off boundary
+}
+
+// Compaction must leave every triangle/boundary index in range of the smaller
+// node array (guards against indices that still point into the pre-cut grid).
+TEST(QuadMeshHoles, IndicesValidAfterCompaction) {
+  const int degree = 1, m = 5;
+  aether::mesh::Quad quad(degree, m, m, kSquare4, {kCornerHole});
+
+  const int n = quad.num_nodes();
+  for (const auto& tri : quad.triangles())
+    for (int v = 0; v < 3; ++v) {
+      EXPECT_GE(tri[v].get(), 0);
+      EXPECT_LT(tri[v].get(), n);
+    }
+  for (const auto& bn : quad.boundary_nodes()) {
+    EXPECT_GE(bn.get(), 0);
+    EXPECT_LT(bn.get(), n);
+  }
+}
+
+// Interior hole: 4 central cells -> 8 triangles gone; only the centre node
+// (2,2) is orphaned, so 25-1=24 nodes. On this coarse grid the result is a
+// one-cell-thick ring, so all 24 nodes lie on a boundary (16 outer + 8 inner).
+TEST(QuadMeshHoles, InteriorHoleCreatesAnnulus) {
+  const int degree = 1, m = 5;
+  aether::mesh::Quad quad(degree, m, m, kSquare4, {kCenterHole});
+
+  EXPECT_EQ(quad.triangles().size(), static_cast<std::size_t>(24));
+  EXPECT_EQ(quad.num_nodes(), 24);
+
+  bool has_center = false;
+  for (const auto& p : quad.nodes())
+    if (std::lround(p.x()) == 2 && std::lround(p.y()) == 2) has_center = true;
+  EXPECT_FALSE(has_center);  // centre node removed
+
+  std::set<std::pair<int, int>> bd;
+  for (const auto& n : quad.boundary_nodes()) {
+    const auto& p = quad.nodes()[n.get()];
+    bd.insert({static_cast<int>(std::lround(p.x())), static_cast<int>(std::lround(p.y()))});
+  }
+  EXPECT_EQ(quad.boundary_nodes().size(), static_cast<std::size_t>(24));
+
+  const std::array<std::pair<int, int>, 8> inner_ring{
+      {{1, 1}, {2, 1}, {3, 1}, {3, 2}, {3, 3}, {2, 3}, {1, 3}, {1, 2}}};
+  for (const auto& rc : inner_ring) EXPECT_TRUE(bd.count(rc));
+}
+
+// Two disjoint holes must both apply (exercises the loop over the hole list).
+TEST(QuadMeshHoles, MultipleDisjointHoles) {
+  const int degree = 1, m = 5;
+  const std::array<aether::Vec2, 4> hole_bl{{{0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 1.0}}};
+  const std::array<aether::Vec2, 4> hole_tr{{{3.0, 3.0}, {4.0, 3.0}, {4.0, 4.0}, {3.0, 4.0}}};
+  aether::mesh::Quad quad(degree, m, m, kSquare4, {hole_bl, hole_tr});
+
+  // One corner cell at each opposite corner: 4 triangles, 2 orphaned nodes.
+  EXPECT_EQ(quad.triangles().size(), static_cast<std::size_t>(28));
+  EXPECT_EQ(quad.num_nodes(), 23);
+
+  bool bl = false, tr = false;
+  for (const auto& p : quad.nodes()) {
+    if (std::lround(p.x()) == 0 && std::lround(p.y()) == 0) bl = true;
+    if (std::lround(p.x()) == 4 && std::lround(p.y()) == 4) tr = true;
+  }
+  EXPECT_FALSE(bl);
+  EXPECT_FALSE(tr);
+}

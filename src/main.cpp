@@ -1,5 +1,6 @@
 // Copyright 2026 Spencer Evans-Cole
 #include <iostream>
+#include <vector>
 
 #include <spdlog/spdlog.h>
 
@@ -14,30 +15,28 @@
 #include "aether/solver/solver.hpp"
 #include "aether/output/output.hpp"
 #include "aether/mesh/quad.hpp"
+#include "aether/input/input.hpp"
 
 int main() {
   spdlog::set_pattern("[%^%l%$] %v");
   spdlog::info("Starting {}", aether::kProjectName);
   std::cout << aether::kProjectName << ' ' << aether::version_string() << '\n';
-  int m = 16;
-  aether::mesh::Quad quad(1, m, m, {{{2.0, 0.0}, {0.0, 2.0}, {2.0, 4.0}, {4.0, 2.0}}});
+
+  aether::input::Input input = aether::input::Input::parse("input.conf");
+  int m = input.nx();
+  int mm = input.ny();
+  std::vector<std::array<aether::Vec2, 4>> holes = input.holes();
+  std::array<aether::Vec2, 4> corners = input.corners();
+  aether::mesh::Quad quad(1, m, mm, corners, holes);
   spdlog::info("Created quad mesh with {} nodes", quad.num_nodes());
   spdlog::info("Num mesh nodes: {}", quad.num_nodes());
   spdlog::info("Num mesh elements: {}", quad.num_elements());
   aether::elements::P1Element ref_element;
   aether::assembly::Assembler assembler(quad, ref_element);
   assembler.assemble();
-  spdlog::info("Assembled stiffness matrix with {} nonzeros",
+  spdlog::info("Assembled {} x {} stiffness matrix with {} nonzeros",
+               assembler.stiffness_matrix()->rows(), assembler.stiffness_matrix()->cols(),
                assembler.stiffness_matrix()->nonZeros());
-  // print stiffness matrix for debugging
-  const Eigen::IOFormat fmt(4, 0, ", ", "\n", "[", "]");
-  std::ostringstream oss;
-  oss << Eigen::MatrixXd(*assembler.stiffness_matrix()).format(fmt);
-  spdlog::info("Stiffness matrix:\n{}", oss.str());
-  const Eigen::IOFormat rhs_fmt(4, 0, ", ", "\n", "[", "]");
-  std::ostringstream rhs_oss;
-  rhs_oss << assembler.rhs()->format(rhs_fmt);
-  spdlog::info("RHS vector:\n{}", rhs_oss.str());
 
   // Check if matrix is positive definite before solving
   Eigen::SimplicialLLT<Eigen::SparseMatrix<aether::Real>> cholesky(*assembler.stiffness_matrix());
@@ -49,9 +48,6 @@ int main() {
 
   aether::solver::Solver solver;
   Eigen::VectorXd solution = solver.solve(*assembler.stiffness_matrix(), *assembler.rhs());
-  std::ostringstream sol_oss;
-  sol_oss << solution.format(rhs_fmt);
-  spdlog::info("Solution vector:\n{}", sol_oss.str());
 
   // Fine L_infty error
   Eigen::VectorXd exact_solution = Eigen::VectorXd::Zero(solution.size());

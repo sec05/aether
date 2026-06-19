@@ -12,7 +12,8 @@ class Quad : public Mesh {
   // num nodes is the total number of nodes along the horizontal side of the quad
   // domain is a 2 element list specifcying an x interval and a y interval and the
   // mesh is generated as a uniform grid on the Cartesian product of these intervals.
-  Quad(int degree, int nx, int ny, std::array<Vec2, 4> corners);
+  Quad(int degree, int nx, int ny, std::array<Vec2, 4> corners,
+       std::vector<std::array<Vec2, 4>> holes = {});
   ~Quad() override = default;
   std::vector<std::array<NodeIndex, 3>> triangles() const { return triangles_; }
   std::array<NodeIndex, 3> element_node_indices(int element_index) const override;
@@ -21,9 +22,11 @@ class Quad : public Mesh {
   std::array<Vec2, 4> corners() const { return corners_; }
 
  private:
+  void compute_boundary();
   // Quad-specific data and methods can be added here.
   std::vector<std::array<NodeIndex, 3>> triangles_;
   int nx_, ny_;
   std::array<Vec2, 4> corners_;
+  std::vector<NodeIndex> boundary_nodes_;
 };
 }  // namespace aether::mesh
