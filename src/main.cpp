@@ -13,18 +13,19 @@
 #include "aether/elements/p1_element.hpp"
 #include "aether/solver/solver.hpp"
 #include "aether/output/output.hpp"
+#include "aether/mesh/quad.hpp"
 
 int main() {
   spdlog::set_pattern("[%^%l%$] %v");
   spdlog::info("Starting {}", aether::kProjectName);
   std::cout << aether::kProjectName << ' ' << aether::version_string() << '\n';
   int m = 16;
-  aether::mesh::Rectangle rectangle_mesh(1, m, {{0.0, 3.0}, {0.0, 4.0}});
-  spdlog::info("Created rectangle mesh with {} nodes", rectangle_mesh.num_nodes());
-  spdlog::info("Num mesh nodes: {}", rectangle_mesh.num_nodes());
-  spdlog::info("Num mesh elements: {}", rectangle_mesh.num_elements());
+  aether::mesh::Quad quad(1, m, m, {{{2.0, 0.0}, {0.0, 2.0}, {2.0, 4.0}, {4.0, 2.0}}});
+  spdlog::info("Created quad mesh with {} nodes", quad.num_nodes());
+  spdlog::info("Num mesh nodes: {}", quad.num_nodes());
+  spdlog::info("Num mesh elements: {}", quad.num_elements());
   aether::elements::P1Element ref_element;
-  aether::assembly::Assembler assembler(rectangle_mesh, ref_element);
+  aether::assembly::Assembler assembler(quad, ref_element);
   assembler.assemble();
   spdlog::info("Assembled stiffness matrix with {} nonzeros",
                assembler.stiffness_matrix()->nonZeros());
@@ -54,17 +55,16 @@ int main() {
 
   // Fine L_infty error
   Eigen::VectorXd exact_solution = Eigen::VectorXd::Zero(solution.size());
-  const int n = rectangle_mesh.num_nodes();
+  const int n = quad.num_nodes();
   Eigen::VectorXd u_exact(n);
   for (int i = 0; i < n; ++i)
-    u_exact[i] = std::pow(rectangle_mesh.node(i).x(), 2) - std::pow(rectangle_mesh.node(i).y(), 2);
+    u_exact[i] = std::pow(quad.node(i).x(), 2) - std::pow(quad.node(i).y(), 2);
 
   const double err_inf = (solution - u_exact).cwiseAbs().maxCoeff();
   spdlog::info("L_infty error: {:.2e}", err_inf);
 
   aether::output::Output output;
-  output.write_solution_vtk("solution.vtu", rectangle_mesh.nodes(), rectangle_mesh.triangles(),
-                            {{"u", solution}});
+  output.write_solution_vtk("solution.vtu", quad.nodes(), quad.triangles(), {{"u", solution}});
   spdlog::info("Wrote solution to solution.vtu");
   return 0;
 }
