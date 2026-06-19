@@ -1,7 +1,7 @@
 // Copyright 2026 Spencer Evans-Cole
 //
 // Tests for the P1 assembler + solve pipeline on the unit-square mesh
-// produced by aether::mesh::Square(1, 16) (a 4x4 node grid, 18 triangles).
+// produced by aether::mesh::Rectangle(1, 16) (a 4x4 node grid, 18 triangles).
 //
 // These encode the Laplace problem your current assembler produces:
 //   -Δu = 0  on (0,1)^2,  u = g on ∂Ω,  with g(x,y) = x^2 - y^2.
@@ -18,7 +18,7 @@
 #include <Eigen/Dense>
 
 #include "aether/core/types.hpp"
-#include "aether/mesh/square.hpp"
+#include "aether/mesh/rectangle.hpp"
 #include "aether/elements/p1_element.hpp"
 #include "aether/assembly/assembler.hpp"
 #include "aether/solver/solver.hpp"
@@ -30,7 +30,7 @@ double ExactSolution(double x, double y) { return x * x - y * y; }
 
 class AssemblerTest : public ::testing::Test {
  protected:
-  AssemblerTest() : mesh_(1, 16), assembler_(mesh_, ref_) {}
+  AssemblerTest() : mesh_(1, 4, {{0.0, 1.0}, {0.0, 1.0}}), assembler_(mesh_, ref_) {}
 
   void SetUp() override { assembler_.assemble(); }
 
@@ -45,7 +45,7 @@ class AssemblerTest : public ::testing::Test {
            std::abs(y - 1.0) < kTol;
   }
 
-  aether::mesh::Square mesh_;
+  aether::mesh::Rectangle mesh_;
   aether::elements::P1Element ref_;
   aether::assembly::Assembler assembler_;
 };
@@ -93,7 +93,7 @@ TEST_F(AssemblerTest, InteriorNodesHaveStandardDiagonal) {
   }
 }
 
-// Explicit regression check of the known interior block for Square(1, 16).
+// Explicit regression check of the known interior block for Rectangle(1, 16).
 // Interior nodes are 5, 6, 9, 10; edge neighbors couple at -1 and the
 // hypotenuse (diagonal) neighbors cancel to exactly 0.
 TEST_F(AssemblerTest, KnownInteriorStencilValues) {

@@ -6,7 +6,7 @@
 #include <Eigen/Sparse>
 #include <Eigen/Dense>
 
-#include "aether/mesh/square.hpp"
+#include "aether/mesh/rectangle.hpp"
 #include "aether/version.hpp"
 #include "aether/core/types.hpp"
 #include "aether/assembly/assembler.hpp"
@@ -18,12 +18,13 @@ int main() {
   spdlog::set_pattern("[%^%l%$] %v");
   spdlog::info("Starting {}", aether::kProjectName);
   std::cout << aether::kProjectName << ' ' << aether::version_string() << '\n';
-  aether::mesh::Square square_mesh(1, 16);
-  spdlog::info("Created square mesh with {} nodes", square_mesh.num_nodes());
-  spdlog::info("Num mesh nodes: {}", square_mesh.num_nodes());
-  spdlog::info("Num mesh elements: {}", square_mesh.num_elements());
+  int m = 16;
+  aether::mesh::Rectangle rectangle_mesh(1, m, {{0.0, 3.0}, {0.0, 4.0}});
+  spdlog::info("Created rectangle mesh with {} nodes", rectangle_mesh.num_nodes());
+  spdlog::info("Num mesh nodes: {}", rectangle_mesh.num_nodes());
+  spdlog::info("Num mesh elements: {}", rectangle_mesh.num_elements());
   aether::elements::P1Element ref_element;
-  aether::assembly::Assembler assembler(square_mesh, ref_element);
+  aether::assembly::Assembler assembler(rectangle_mesh, ref_element);
   assembler.assemble();
   spdlog::info("Assembled stiffness matrix with {} nonzeros",
                assembler.stiffness_matrix()->nonZeros());
@@ -53,16 +54,16 @@ int main() {
 
   // Fine L_infty error
   Eigen::VectorXd exact_solution = Eigen::VectorXd::Zero(solution.size());
-  const int n = square_mesh.num_nodes();
+  const int n = rectangle_mesh.num_nodes();
   Eigen::VectorXd u_exact(n);
   for (int i = 0; i < n; ++i)
-    u_exact[i] = std::pow(square_mesh.node(i).x(), 2) - std::pow(square_mesh.node(i).y(), 2);
+    u_exact[i] = std::pow(rectangle_mesh.node(i).x(), 2) - std::pow(rectangle_mesh.node(i).y(), 2);
 
   const double err_inf = (solution - u_exact).cwiseAbs().maxCoeff();
   spdlog::info("L_infty error: {:.2e}", err_inf);
 
   aether::output::Output output;
-  output.write_solution_vtk("solution.vtu", square_mesh.nodes(), square_mesh.triangles(),
+  output.write_solution_vtk("solution.vtu", rectangle_mesh.nodes(), rectangle_mesh.triangles(),
                             {{"u", solution}});
   spdlog::info("Wrote solution to solution.vtu");
   return 0;

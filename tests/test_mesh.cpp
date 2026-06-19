@@ -6,35 +6,35 @@
 #include <gtest/gtest.h>
 
 #include "aether/core/types.hpp"
-#include "aether/mesh/square.hpp"
+#include "aether/mesh/rectangle.hpp"
 #include "aether/version.hpp"
 
-TEST(SquareMesh, ConstructsCorrectly) {
+TEST(RectangleMesh, ConstructsCorrectly) {
   int degree = 1;
-  int num_nodes = 16;  // 4x4 grid
-  aether::mesh::Square square_mesh(degree, num_nodes);
+  int num_nodes = 4;  // 4x4 grid
+  aether::mesh::Rectangle rectangle_mesh(degree, num_nodes, {{0.0, 1.0}, {0.0, 1.0}});
 
-  EXPECT_EQ(square_mesh.degree(), degree);
-  EXPECT_EQ(square_mesh.num_nodes(), num_nodes);
-  EXPECT_EQ(square_mesh.nodes().size(), num_nodes);
+  EXPECT_EQ(rectangle_mesh.degree(), degree);
+  EXPECT_EQ(rectangle_mesh.num_nodes(), num_nodes * num_nodes);
+  EXPECT_EQ(rectangle_mesh.nodes().size(), num_nodes * num_nodes);
 
   // Check that the nodes are correctly spaced in a uniform grid
-  int num_nodes_per_side = static_cast<int>(std::sqrt(num_nodes));
+  int num_nodes_per_side = num_nodes;
   for (int j = 0; j < num_nodes_per_side; ++j) {
     for (int i = 0; i < num_nodes_per_side; ++i) {
-      const auto &node = square_mesh.nodes()[j * num_nodes_per_side + i];
+      const auto &node = rectangle_mesh.nodes()[j * num_nodes_per_side + i];
       EXPECT_NEAR(node.x(), static_cast<aether::Real>(i) / (num_nodes_per_side - 1), 1e-6);
       EXPECT_NEAR(node.y(), static_cast<aether::Real>(j) / (num_nodes_per_side - 1), 1e-6);
     }
   }
 }
 
-TEST(SquareMesh, GeneratesCorrectTriangles) {
+TEST(RectangleMesh, GeneratesCorrectTriangles) {
   const int degree = 1;
-  const int num_nodes = 16;  // 4x4 grid
-  aether::mesh::Square square_mesh(degree, num_nodes);
+  const int num_nodes = 4;  // 4x4 grid
+  aether::mesh::Rectangle rectangle_mesh(degree, num_nodes, {{0.0, 1.0}, {0.0, 1.0}});
 
-  const auto &triangles = square_mesh.triangles();
+  const auto &triangles = rectangle_mesh.triangles();
 
   const int nps = 4;  // num_nodes_per_side
   const std::size_t expected_count = 2 * (nps - 1) * (nps - 1);
@@ -44,7 +44,7 @@ TEST(SquareMesh, GeneratesCorrectTriangles) {
   for (const auto &tri : triangles) {
     for (int v = 0; v < 3; ++v) {
       EXPECT_GE(tri[v].get(), 0);
-      EXPECT_LT(tri[v].get(), num_nodes);
+      EXPECT_LT(tri[v].get(), num_nodes * num_nodes);
     }
     EXPECT_NE(tri[0].get(), tri[1].get());
     EXPECT_NE(tri[1].get(), tri[2].get());
