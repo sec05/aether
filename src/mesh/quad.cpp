@@ -5,6 +5,7 @@
 #include <map>
 #include <unordered_map>
 #include <utility>
+#include <set>
 
 #include "aether/mesh/quad.hpp"
 
@@ -99,37 +100,58 @@ Quad::Quad(int degree, int nx, int ny, std::array<Vec2, 4> corners,
   compute_boundary();
 }
 
+std::vector<NodeIndex> Quad::boundary_nodes() const { return boundary_nodes_; }
+
 void Quad::compute_boundary() {
-  std::map<std::pair<Index, Index>, int> edges;
-  auto add = [&](Index a, Index b) {
-    if (a > b) std::swap(a, b);
-    edges[{a, b}]++;
+  struct EdgeRec {
+    int count;
+    NodeIndex a, b;
+  };  // a,b = first-seen (triangle CCW) order
+  std::map<std::pair<NodeIndex, NodeIndex>, EdgeRec> edges;
+  auto sorted = [](NodeIndex x, NodeIndex y) {
+    return x < y ? std::make_pair(x, y) : std::make_pair(y, x);
   };
-  for (const auto& t : triangles_) {
-    add(t[0].get(), t[1].get());
-    add(t[1].get(), t[2].get());
-    add(t[2].get(), t[0].get());
-  }
-  std::vector<bool> on_bd(nodes_.size(), false);
-  for (const auto& [e, count] : edges)
-    if (count == 1) {
-      on_bd[e.first] = true;
-      on_bd[e.second] = true;
+
+  for (const auto& tri : triangles_)
+    for (int e = 0; e < 3; ++e) {
+      NodeIndex a = tri[e], b = tri[(e + 1) % 3];
+      auto it = edges.find(sorted(a, b));
+      if (it == edges.end())
+        edges.insert({sorted(a, b), {1, a, b}});
+      else
+        it->second.count++;
     }
-  boundary_nodes_.clear();
-  for (Index n = 0; n < static_cast<Index>(nodes_.size()); ++n)
-    if (on_bd[n]) boundary_nodes_.push_back(NodeIndex{n});
+
+  boundary_facets_.clear();
+  std::set<NodeIndex> bnodes;
+  for (const auto& [k, rec] : edges) {
+    if (rec.count != 1) continue;  // interior edge
+    boundary_facets_.push_back({{rec.a, rec.b}, classify_edge(rec.a, rec.b)});
+    bnodes.insert(rec.a);
+    bnodes.insert(rec.b);
+  }
+  boundary_nodes_.assign(bnodes.begin(), bnodes.end());  // keep this for Dirichlet
 }
 
+int Quad::classify_edge(NodeIndex a, NodeIndex b) const {
+  const Vec2 mid = 0.5 * (nodes_[a.get()] + nodes_[b.get()]);    // adapt to your node accessor
+  const double tol = 1e-9 * (corners_[2] - corners_[0]).norm();  // ~bbox diagonal
+  for (int s = 0; s < 4; ++s) {
+    const Vec2 p = corners_[s], q = corners_[(s + 1) % 4];
+    const Vec2 d = q - p, r = mid - p;
+    const double cross = d.x() * r.y() - d.y() * r.x();
+    const double t = r.dot(d) / d.dot(d);
+    if (std::abs(cross) < tol * d.norm() && t > -tol && t < 1.0 + tol)
+      return s + 1;  // outer sides -> 1,2,3,4
+  }
+  return 5;  // not on any outer side => hole rim
+}
 std::array<NodeIndex, 3> Quad::element_node_indices(int element_index) const {
-  const auto& tri = triangles_[element_index];
-  return {tri[0], tri[1], tri[2]};
+  return triangles_[element_index];
 }
 
 std::vector<Vec2> Quad::element_nodes(int element_index) const {
-  const auto idx = element_node_indices(element_index);
-  return {nodes_[idx[0].get()], nodes_[idx[1].get()], nodes_[idx[2].get()]};
+  const std::array<NodeIndex, 3>& tri = triangles_[element_index];
+  return {nodes_[tri[0].get()], nodes_[tri[1].get()], nodes_[tri[2].get()]};
 }
-
-std::vector<NodeIndex> Quad::boundary_nodes() const { return boundary_nodes_; }
 }  // namespace aether::mesh

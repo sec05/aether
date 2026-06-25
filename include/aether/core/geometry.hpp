@@ -1,6 +1,8 @@
 // Copyright 2026 Spencer Evans-Cole
 #pragma once
 
+#include <functional>
+
 #include <cmath>
 #include <Eigen/Core>
 
@@ -88,5 +90,17 @@ inline Vec2 edge_normal(const Vec2& a, const Vec2& b) noexcept {
   const Vec2 d = b - a;
   return Vec2(d.y(), -d.x());  // flip sign for the opposite orientation
 }
+
+enum class BCType { Dirichlet, Neumann, Robin };
+
+// g(x, t) — scalar for the heat problem; widen to a small vector later if needed
+using BoundaryFn = std::function<double(const Vec2&, double)>;
+
+struct BoundaryCondition {
+  BCType type;
+  int marker;              // boundary facet tag: outer wall, hole rim, etc.
+  BoundaryFn value;        // Dirichlet g, Neumann flux q, or Robin g
+  BoundaryFn robin_coeff;  // alpha in (alpha*u + du/dn = g); unused otherwise
+};
 
 }  // namespace aether

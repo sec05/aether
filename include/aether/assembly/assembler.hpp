@@ -21,6 +21,11 @@ class Assembler {
   void assemble();
   const Eigen::SparseMatrix<Real>* stiffness_matrix() const { return &global_stiffness_matrix_; }
   const Eigen::VectorXd* rhs() const { return &rhs_; }
+  // assembler.hpp — add to the public section
+  void apply_boundary_conditions(const std::vector<BoundaryCondition>& conditions,
+                                 Real t = Real(0));
+  // assembler.hpp — public
+  void assemble_load(const BoundaryFn& f, Real t = Real(0));
 
  private:
   void dirichlet_bc(const std::vector<std::pair<NodeIndex, Real>>& bcs);

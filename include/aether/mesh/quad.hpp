@@ -6,6 +6,7 @@
 #include "./mesh.hpp"
 
 namespace aether::mesh {
+
 class Quad : public Mesh {
  public:
   // degree is not used for this simple mesh, but we include it for consistency with the base class.
@@ -23,6 +24,7 @@ class Quad : public Mesh {
 
  private:
   void compute_boundary();
+  int classify_edge(NodeIndex a, NodeIndex b) const;
   // Quad-specific data and methods can be added here.
   std::vector<std::array<NodeIndex, 3>> triangles_;
   int nx_, ny_;

@@ -5,9 +5,14 @@
 #include <array>
 #include <cmath>
 #include <vector>
+#include <unordered_map>
+#include <utility>
 
 #include <Eigen/Sparse>
 #include <Eigen/Dense>
+
+#include "aether/core/geometry.hpp"
+#include "aether/mesh/quad.hpp"
 
 namespace aether::assembly {
 
@@ -28,14 +33,6 @@ void Assembler::assemble() {
 
   rhs_.resize(n);
   rhs_.setZero();
-  // x^2 - y^2 test solution
-  std::vector<std::pair<NodeIndex, Real>> bcs;
-  for (const auto& node : mesh_.boundary_nodes()) {
-    Vec2 coord = mesh_.nodes()[node.get()];
-    Real value = std::pow(coord.x(), 2) - std::pow(coord.y(), 2);
-    bcs.emplace_back(node, value);
-  }
-  dirichlet_bc(bcs);
 }
 
 Mat3 Assembler::local_stiffness_matrix(int element_index) const {
@@ -98,4 +95,104 @@ void Assembler::dirichlet_bc(const std::vector<std::pair<NodeIndex, Real>>& bcs)
         it.valueRef() = (it.row() == it.col()) ? Real(1) : Real(0);
   global_stiffness_matrix_.prune(aether::Real(0));
 }
+
+void Assembler::apply_boundary_conditions(const std::vector<BoundaryCondition>& conditions,
+                                          Real t) {
+  // Index conditions by marker. Last write wins if a marker is listed twice.
+  std::unordered_map<int, const BoundaryCondition*> by_marker;
+  for (const auto& bc : conditions) by_marker[bc.marker] = &bc;
+
+  // BoundaryFn is double-domain; pin the conversions to Real explicitly here so
+  // nothing narrows silently if Real ever becomes float.
+  const double td = static_cast<double>(t);
+  auto X = [&](NodeIndex i) -> Vec2 { return mesh_.nodes()[i.get()]; };
+
+  // 2-point Gauss on the reference edge [0,1]. sqrt isn't constexpr before
+  // C++23, so these are static const rather than constexpr.
+  static const std::array<Real, 2> qs{Real(0.5) - Real(0.5) / std::sqrt(Real(3)),
+                                      Real(0.5) + Real(0.5) / std::sqrt(Real(3))};
+  static const std::array<Real, 2> qw{Real(0.5), Real(0.5)};
+
+  std::vector<std::pair<NodeIndex, Real>> dirichlet;  // deferred to the end
+
+  for (const auto& f : mesh_.boundary_facets()) {
+    auto it = by_marker.find(f.marker);
+    if (it == by_marker.end()) continue;  // unassigned marker => homogeneous Neumann
+    const BoundaryCondition& bc = *it->second;
+
+    const NodeIndex a = f.nodes[0];
+    const NodeIndex b = f.nodes[1];
+
+    // --- Essential: collect endpoint values, apply after the loop. ---
+    if (bc.type == BCType::Dirichlet) {
+      dirichlet.emplace_back(a, static_cast<Real>(bc.value(X(a), td)));
+      dirichlet.emplace_back(b, static_cast<Real>(bc.value(X(b), td)));
+      continue;
+    }
+
+    // --- Natural: integrate over this edge. ---
+    const Vec2 xa = X(a);
+    const Vec2 xb = X(b);
+    const Real L = (xb - xa).norm();
+
+    for (int k = 0; k < 2; ++k) {
+      const Real s = qs[k];
+      const Real N0 = Real(1) - s;
+      const Real N1 = s;
+      const Real jxw = qw[k] * L;        // weight * edge Jacobian
+      const Vec2 x = N0 * xa + N1 * xb;  // physical quadrature point
+
+      // Neumann flux q, or Robin's g — both land on the RHS as +∫ g φ ds.
+      const Real g = static_cast<Real>(bc.value(x, td));
+      rhs_(a.get()) += jxw * g * N0;
+      rhs_(b.get()) += jxw * g * N1;
+
+      // Robin adds the boundary-mass block +∫ α φ_i φ_j ds to the matrix.
+      if (bc.type == BCType::Robin) {
+        const Real alpha = static_cast<Real>(bc.robin_coeff(x, td));
+        const Real c = jxw * alpha;
+        auto& K = global_stiffness_matrix_;  // entries already in the pattern
+        K.coeffRef(a.get(), a.get()) += c * N0 * N0;
+        K.coeffRef(a.get(), b.get()) += c * N0 * N1;
+        K.coeffRef(b.get(), a.get()) += c * N1 * N0;
+        K.coeffRef(b.get(), b.get()) += c * N1 * N1;
+      }
+    }
+  }
+
+  // Apply Dirichlet last, so it wins on any corner shared with a natural edge.
+  if (!dirichlet.empty()) dirichlet_bc(dirichlet);
+}
+
+void Assembler::assemble_load(const BoundaryFn& f, Real t) {
+  const int num_elements = mesh_.num_elements();
+  const double td = static_cast<double>(t);
+
+  for (int e = 0; e < num_elements; ++e) {
+    const std::vector<Vec2> nodes = mesh_.element_nodes(e);
+    const auto idx = mesh_.element_node_indices(e);
+
+    // Same affine geometry as the stiffness routine.
+    Mat2 J;
+    J.col(0) = nodes[1] - nodes[0];
+    J.col(1) = nodes[2] - nodes[0];
+    const Real absdet = std::abs(J.determinant());
+
+    // Higher order than stiffness on purpose: P1 gradients are constant so
+    // 1-point nails stiffness, but f·φ is non-constant, so under-integrating
+    // here would inject quadrature error into your convergence rate.
+    for (const auto& [xi, w] : ref_element_.quadrature_points(2)) {
+      const std::array<Real, 3> N = ref_element_.shape(xi);
+
+      // Map the reference quadrature point to physical space.
+      Vec2 x = Vec2::Zero();
+      for (int i = 0; i < 3; ++i) x += N[i] * nodes[i];
+
+      const Real fx = static_cast<Real>(f(x, td));
+      const Real jxw = w * fx * absdet;
+      for (int i = 0; i < 3; ++i) rhs_(idx[i].get()) += jxw * N[i];
+    }
+  }
+}
+
 }  // namespace aether::assembly
