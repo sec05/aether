@@ -20,6 +20,9 @@ class Input {
   int nx() const { return nx_; }
   int ny() const { return ny_; }
   const std::vector<std::array<Vec2, 4>>& holes() const { return holes_; }
+  Real time_step() const { return time_step_; }
+  int num_steps() const { return num_steps_; }
+  Real theta() const { return theta_; }
 
  private:
   std::string name_;
@@ -28,6 +31,9 @@ class Input {
   int nx_ = 0;
   int ny_ = 0;
   std::vector<std::array<Vec2, 4>> holes_;
+  Real time_step_ = 0.0;
+  int num_steps_ = 0;
+  Real theta_ = 0.0;
 };
 
 }  // namespace aether::input

@@ -87,4 +87,28 @@ void Output::write_solution_vtk(
   if (!doc.save_file(path.c_str(), "  "))
     throw std::runtime_error("write_vtu: failed to write " + path);
 }
+
+// output.cpp
+void Output::write_pvd(const std::string& path,
+                       const std::vector<std::pair<double, std::string>>& timesteps) const {
+  pugi::xml_document doc;
+  pugi::xml_node decl = doc.append_child(pugi::node_declaration);
+  decl.append_attribute("version") = "1.0";
+
+  pugi::xml_node vtkfile = doc.append_child("VTKFile");
+  vtkfile.append_attribute("type") = "Collection";
+  vtkfile.append_attribute("version") = "1.0";
+  vtkfile.append_attribute("byte_order") = "LittleEndian";
+
+  pugi::xml_node coll = vtkfile.append_child("Collection");
+  for (const auto& [t, file] : timesteps) {
+    pugi::xml_node ds = coll.append_child("DataSet");
+    ds.append_attribute("timestep") = t;  // physical time, not step index
+    ds.append_attribute("part") = 0;
+    ds.append_attribute("file") = file.c_str();
+  }
+
+  if (!doc.save_file(path.c_str(), "  "))
+    throw std::runtime_error("write_pvd: failed to write " + path);
+}
 }  // namespace aether::output

@@ -113,6 +113,27 @@ Input Input::parse(const std::string& filename) {
         throw std::runtime_error("Invalid Ny value on line " + std::to_string(line_no) + ": " +
                                  e.what());
       }
+    } else if (key == "time step") {
+      try {
+        input.time_step_ = std::stod(value);
+      } catch (const std::exception& e) {
+        throw std::runtime_error("Invalid time step value on line " + std::to_string(line_no) +
+                                 ": " + e.what());
+      }
+    } else if (key == "num steps") {
+      try {
+        input.num_steps_ = std::stoi(value);
+      } catch (const std::exception& e) {
+        throw std::runtime_error("Invalid number of steps value on line " +
+                                 std::to_string(line_no) + ": " + e.what());
+      }
+    } else if (key == "theta") {
+      try {
+        input.theta_ = std::stod(value);
+      } catch (const std::exception& e) {
+        throw std::runtime_error("Invalid theta value on line " + std::to_string(line_no) + ": " +
+                                 e.what());
+      }
     } else {
       throw std::runtime_error("Unknown key '" + key + "' on line " + std::to_string(line_no));
     }

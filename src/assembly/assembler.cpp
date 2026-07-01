@@ -16,7 +16,7 @@
 
 namespace aether::assembly {
 
-void Assembler::assemble() {
+void Assembler::assemble_stiffness() {
   const int num_elements = mesh_.num_elements();
   const int n = mesh_.num_nodes();  // # DOFs for P1 (DOF == node)
 
@@ -193,6 +193,30 @@ void Assembler::assemble_load(const BoundaryFn& f, Real t) {
       for (int i = 0; i < 3; ++i) rhs_(idx[i].get()) += jxw * N[i];
     }
   }
+}
+
+Mat3 Assembler::local_mass_matrix(int element_index) const {
+  const std::vector<Vec2> nodes = mesh_.element_nodes(element_index);
+  Mat2 J;
+  J.col(0) = nodes[1] - nodes[0];
+  J.col(1) = nodes[2] - nodes[0];
+  const Real absdet = std::abs(J.determinant());
+  Mat3 m;
+  m << Real(2), Real(1), Real(1), Real(1), Real(2), Real(1), Real(1), Real(1), Real(2);
+  return (absdet / Real(24)) * m;  // (absdet/2)/12 = absdet/24
+}
+
+void Assembler::assemble_mass() {
+  const int num_elements = mesh_.num_elements();
+  const int n = mesh_.num_nodes();
+  std::vector<Eigen::Triplet<Real>> triplets;
+  triplets.reserve(static_cast<std::size_t>(9 * num_elements));
+  for (int e = 0; e < num_elements; ++e) {
+    Mat3 local = local_mass_matrix(e);
+    scatter(e, local, &triplets);  // reuses your existing scatter unchanged
+  }
+  global_mass_matrix_.resize(n, n);
+  global_mass_matrix_.setFromTriplets(triplets.begin(), triplets.end());
 }
 
 }  // namespace aether::assembly

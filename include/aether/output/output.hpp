@@ -17,6 +17,8 @@ class Output {
       const std::string& path, const std::vector<Vec2>& points,
       const std::vector<std::array<NodeIndex, 3>>& triangles,
       const std::vector<std::pair<std::string, Eigen::VectorXd>>& point_fields) const;
+  void write_pvd(const std::string& path,
+                 const std::vector<std::pair<double, std::string>>& timesteps) const;
 };
 
 }  // namespace aether::output
