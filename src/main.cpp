@@ -52,7 +52,9 @@ int main() {
   // marker 3 (top) intentionally omitted => homogeneous Neumann => insulated
   aether::solver::TimeStepper stepper(quad, *assembler.stiffness_matrix(), *assembler.mass_matrix(),
                                       bcs,
-                                      /*theta=*/input.theta(), /*dt=*/input.time_step());
+                                      /*theta=*/input.theta(),
+                                      /*dt=*/input.time_step(),
+                                      /*scale=*/input.alpha());
   const aether::Real T_hot = 100.0;
   stepper.set_initial_condition([T_hot](const aether::Vec2&) { return T_hot; });
   std::vector<std::pair<double, std::string>> series;

@@ -11,8 +11,8 @@ namespace aether::solver {
 
 TimeStepper::TimeStepper(const mesh::Mesh& mesh, const Eigen::SparseMatrix<Real>& stiffness,
                          const Eigen::SparseMatrix<Real>& mass,
-                         const std::vector<BoundaryCondition>& bcs, Real theta, Real dt)
-    : mesh_(mesh), K_(stiffness), M_(mass), theta_(theta), dt_(dt) {  // NOLINT
+                         const std::vector<BoundaryCondition>& bcs, Real theta, Real dt, Real alpha)
+    : mesh_(mesh), K_(stiffness), M_(mass), theta_(theta), dt_(dt), alpha_(alpha) {  // NOLINT
   const int n = mesh_.num_nodes();
 
   // Dirichlet set: endpoints of facets whose marker carries a Dirichlet BC.
@@ -32,7 +32,7 @@ TimeStepper::TimeStepper(const mesh::Mesh& mesh, const Eigen::SparseMatrix<Real>
   for (const auto& [dof, g] : dof_to_g) dirichlet_.push_back({dof, mesh_.node(dof), g});
 
   // Constant system matrix; keep A_ pristine for the per-step lift.
-  A_ = M_ + theta_ * dt_ * K_;
+  A_ = M_ + theta_ * dt_ * alpha_ * K_;
 
   // Symmetric elimination of the Dirichlet rows/cols on a copy, then factor.
   std::vector<char> fixed(n, 0);
@@ -81,7 +81,7 @@ void TimeStepper::step() {
   const Eigen::VectorX<Real> b_new = load_(t_new);  // b^{n+1}
 
   // theta-method RHS from the previous solution.
-  Eigen::VectorX<Real> r = M_ * u_ - (Real(1) - theta_) * dt_ * (K_ * u_) +
+  Eigen::VectorX<Real> r = M_ * u_ - (Real(1) - theta_) * dt_ * (alpha_ * K_ * u_) +
                            dt_ * ((Real(1) - theta_) * b_old + theta_ * b_new);
 
   // Dirichlet lift + overwrite at t_new, against the PRISTINE A_.

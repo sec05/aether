@@ -23,6 +23,7 @@ class Input {
   Real time_step() const { return time_step_; }
   int num_steps() const { return num_steps_; }
   Real theta() const { return theta_; }
+  Real alpha() const { return alpha_; }
 
  private:
   std::string name_;
@@ -34,6 +35,7 @@ class Input {
   Real time_step_ = 0.0;
   int num_steps_ = 0;
   Real theta_ = 0.0;
+  Real alpha_ = 1.0;
 };
 
 }  // namespace aether::input

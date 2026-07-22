@@ -134,6 +134,13 @@ Input Input::parse(const std::string& filename) {
         throw std::runtime_error("Invalid theta value on line " + std::to_string(line_no) + ": " +
                                  e.what());
       }
+    } else if (key == "alpha") {
+      try {
+        input.alpha_ = std::stod(value);
+      } catch (const std::exception& e) {
+        throw std::runtime_error("Invalid alpha value on line " + std::to_string(line_no) + ": " +
+                                 e.what());
+      }
     } else {
       throw std::runtime_error("Unknown key '" + key + "' on line " + std::to_string(line_no));
     }

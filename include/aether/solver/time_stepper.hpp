@@ -25,7 +25,7 @@ class TimeStepper {
 
   TimeStepper(const mesh::Mesh& mesh, const Eigen::SparseMatrix<Real>& stiffness,
               const Eigen::SparseMatrix<Real>& mass, const std::vector<BoundaryCondition>& bcs,
-              Real theta, Real dt);
+              Real theta, Real dt, Real alpha);
 
   void set_initial_condition(const InitFn& u0);  // call before stepping
   void set_load(LoadFn load);                    // optional; default zero
@@ -57,6 +57,7 @@ class TimeStepper {
   Real theta_;
   Real dt_;
   Real t_ = Real(0);
+  Real alpha_ = Real(1);
   Eigen::VectorX<Real> u_;
 };
 
