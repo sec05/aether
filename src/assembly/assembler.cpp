@@ -21,7 +21,7 @@ void Assembler::assemble_stiffness() {
   const int n = mesh_.num_nodes();  // # DOFs for P1 (DOF == node)
 
   std::vector<Eigen::Triplet<Real>> triplets;
-  triplets.reserve(static_cast<std::size_t>(9 * num_elements));
+  triplets.reserve(9uz * static_cast<std::size_t>(num_elements));
 
   for (int e = 0; e < num_elements; ++e) {
     Mat3 local = local_stiffness_matrix(e);
@@ -47,7 +47,10 @@ Mat3 Assembler::local_stiffness_matrix(int element_index) const {
   const Real absdet = std::abs(detJ);
 
   Mat3 local = Mat3::Zero();
-  for (const auto& [xi, w] : ref_element_.quadrature_points(1)) {
+  for (const auto& quad_point : ref_element_.quadrature_points(1)) {
+    const Vec2 xi = quad_point.point;
+    const Real w = quad_point.weight;
+
     const std::array<Vec2, 3> gref = ref_element_.shape_grad(xi);  // call once
 
     std::array<Vec2, 3> grad;
@@ -181,7 +184,9 @@ void Assembler::assemble_load(const BoundaryFn& f, Real t) {
     // Higher order than stiffness on purpose: P1 gradients are constant so
     // 1-point nails stiffness, but f·φ is non-constant, so under-integrating
     // here would inject quadrature error into your convergence rate.
-    for (const auto& [xi, w] : ref_element_.quadrature_points(2)) {
+    for (const auto& quad_point : ref_element_.quadrature_points(2)) {
+      const Vec2 xi = quad_point.point;
+      const Real w = quad_point.weight;
       const std::array<Real, 3> N = ref_element_.shape(xi);
 
       // Map the reference quadrature point to physical space.

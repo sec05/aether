@@ -29,9 +29,9 @@ TEST(P1Element, ShapeGradients) {
 
 TEST(P1Element, QuadraturePoints) {
   aether::elements::P1Element p1;
-  auto qps = p1.quadrature_points(1);
-  ASSERT_EQ(qps.size(), 1);
-  EXPECT_NEAR(qps[0].first.x(), 0.3333333, 1e-6);
-  EXPECT_NEAR(qps[0].first.y(), 0.3333333, 1e-6);
-  EXPECT_NEAR(qps[0].second, 0.5, 1e-6);
+  auto quad_points = p1.quadrature_points(1);
+  ASSERT_EQ(quad_points.size(), 1);
+  EXPECT_NEAR(quad_points[0].point.x(), 0.3333333, 1e-6);
+  EXPECT_NEAR(quad_points[0].point.y(), 0.3333333, 1e-6);
+  EXPECT_NEAR(quad_points[0].weight, 0.5, 1e-6);
 }

@@ -38,8 +38,8 @@ class AssemblerTest : public ::testing::Test {
 
   void SetUp() override { assembler_.assemble_stiffness(); }  // pristine K, zeroed rhs
 
-  Eigen::MatrixXd Dense() const { return Eigen::MatrixXd(*assembler_.stiffness_matrix()); }
-  Eigen::MatrixXd DenseMass() const { return Eigen::MatrixXd(*assembler_.mass_matrix()); }
+  Eigen::MatrixXd Dense() const { return Eigen::MatrixXd(assembler_.stiffness_matrix()); }
+  Eigen::MatrixXd DenseMass() const { return Eigen::MatrixXd(assembler_.mass_matrix()); }
 
   bool IsBoundary(int i) const {
     constexpr double kTol = 1e-9;
@@ -73,7 +73,7 @@ TEST_F(AssemblerTest, MeshTopology) {
 }
 
 TEST_F(AssemblerTest, StiffnessDimensions) {
-  const auto& K = *assembler_.stiffness_matrix();
+  const auto& K = assembler_.stiffness_matrix();
   EXPECT_EQ(K.rows(), mesh_.num_nodes());
   EXPECT_EQ(K.cols(), mesh_.num_nodes());
 }
@@ -132,7 +132,7 @@ TEST_F(AssemblerTest, KnownInteriorStencilValues) {
 TEST_F(AssemblerTest, ConstantLoadSumsToDomainArea) {
   auto one = [](const aether::Vec2&, aether::Real) { return aether::Real(1); };
   assembler_.assemble_load(one);  // adds into the rhs zeroed by SetUp
-  EXPECT_NEAR(assembler_.rhs()->sum(), 1.0, 1e-9);
+  EXPECT_NEAR(assembler_.rhs().sum(), 1.0, 1e-9);
 }
 
 // ---- Post-BC stiffness (Dirichlet applied) --------------------------------
@@ -141,7 +141,7 @@ TEST_F(AssemblerTest, ConstantLoadSumsToDomainArea) {
 TEST_F(AssemblerTest, DirichletReducesBoundaryRowsToIdentity) {
   ApplyHarmonicDirichlet();
   const Eigen::MatrixXd K = Dense();
-  const Eigen::VectorXd rhs = *assembler_.rhs();
+  const Eigen::VectorXd rhs = assembler_.rhs();
   ASSERT_EQ(rhs.size(), mesh_.num_nodes());
 
   for (int i = 0; i < mesh_.num_nodes(); ++i) {
@@ -158,7 +158,7 @@ TEST_F(AssemblerTest, DirichletReducesBoundaryRowsToIdentity) {
 // one-time Cholesky factorization of (M + theta*dt*K) depends on.
 TEST_F(AssemblerTest, StiffnessIsPositiveDefiniteAfterBC) {
   ApplyHarmonicDirichlet();
-  Eigen::SimplicialLLT<Eigen::SparseMatrix<aether::Real>> llt(*assembler_.stiffness_matrix());
+  Eigen::SimplicialLLT<Eigen::SparseMatrix<aether::Real>> llt(assembler_.stiffness_matrix());
   EXPECT_EQ(llt.info(), Eigen::Success);
 }
 
@@ -166,7 +166,7 @@ TEST_F(AssemblerTest, StiffnessIsPositiveDefiniteAfterBC) {
 TEST_F(AssemblerTest, SolveMatchesExactSolution) {
   ApplyHarmonicDirichlet();
   aether::solver::Solver solver;
-  const Eigen::VectorXd solution = solver.solve(*assembler_.stiffness_matrix(), *assembler_.rhs());
+  const Eigen::VectorXd solution = solver.solve(assembler_.stiffness_matrix(), assembler_.rhs());
   ASSERT_EQ(solution.size(), mesh_.num_nodes());
 
   Eigen::VectorXd u_exact(mesh_.num_nodes());
@@ -187,7 +187,7 @@ class MassTest : public AssemblerTest {
 };
 
 TEST_F(MassTest, MassDimensions) {
-  const auto& M = *assembler_.mass_matrix();
+  const auto& M = assembler_.mass_matrix();
   EXPECT_EQ(M.rows(), mesh_.num_nodes());
   EXPECT_EQ(M.cols(), mesh_.num_nodes());
 }
@@ -199,7 +199,7 @@ TEST_F(MassTest, MassIsSymmetric) {
 
 // Consistent mass is strictly SPD (no null space, unlike the bare stiffness).
 TEST_F(MassTest, MassIsPositiveDefinite) {
-  Eigen::SimplicialLLT<Eigen::SparseMatrix<aether::Real>> llt(*assembler_.mass_matrix());
+  Eigen::SimplicialLLT<Eigen::SparseMatrix<aether::Real>> llt(assembler_.mass_matrix());
   EXPECT_EQ(llt.info(), Eigen::Success);
 }
 

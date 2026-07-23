@@ -91,7 +91,7 @@ Real RmsError(const Harness& h, const aether::solver::TimeStepper& s,
 TEST(TimeStepper, ConstantFieldIsPreservedExactly) {
   Harness h(6);
   auto five = [](const Vec2&, Real) { return Real(5); };
-  aether::solver::TimeStepper s(h.mesh, *h.assembler.stiffness_matrix(), *h.assembler.mass_matrix(),
+  aether::solver::TimeStepper s(h.mesh, h.assembler.stiffness_matrix(), h.assembler.mass_matrix(),
                                 AllDirichlet(five),
                                 /*theta=*/1.0, /*dt=*/0.1, /*scale=*/1.0);
   s.set_initial_condition([](const Vec2&) { return Real(5); });
@@ -104,7 +104,7 @@ TEST(TimeStepper, ConstantFieldIsPreservedExactly) {
 TEST(TimeStepper, ZeroStaysZero) {
   Harness h(6);
   auto zero = [](const Vec2&, Real) { return Real(0); };
-  aether::solver::TimeStepper s(h.mesh, *h.assembler.stiffness_matrix(), *h.assembler.mass_matrix(),
+  aether::solver::TimeStepper s(h.mesh, h.assembler.stiffness_matrix(), h.assembler.mass_matrix(),
                                 AllDirichlet(zero),
                                 /*theta=*/1.0, /*dt=*/0.05, /*scale=*/1.0);
   s.set_initial_condition([](const Vec2&) { return Real(0); });
@@ -119,7 +119,7 @@ TEST(TimeStepper, TimeDependentDirichletHeldExactly) {
   Harness h(6);
   auto ramp = [](const Vec2&, Real t) { return t; };
   const Real dt = 0.01;
-  aether::solver::TimeStepper s(h.mesh, *h.assembler.stiffness_matrix(), *h.assembler.mass_matrix(),
+  aether::solver::TimeStepper s(h.mesh, h.assembler.stiffness_matrix(), h.assembler.mass_matrix(),
                                 AllDirichlet(ramp),
                                 /*theta=*/1.0, dt, /*scale=*/1.0);
   s.set_initial_condition([](const Vec2&) { return Real(0); });
@@ -134,7 +134,7 @@ TEST(TimeStepper, TimeAdvancesByDt) {
   Harness h(4);
   auto zero = [](const Vec2&, Real) { return Real(0); };
   const Real dt = 0.02;
-  aether::solver::TimeStepper s(h.mesh, *h.assembler.stiffness_matrix(), *h.assembler.mass_matrix(),
+  aether::solver::TimeStepper s(h.mesh, h.assembler.stiffness_matrix(), h.assembler.mass_matrix(),
                                 AllDirichlet(zero),
                                 /*theta=*/1.0, dt, /*scale=*/1.0);
   s.set_initial_condition([](const Vec2&) { return Real(0); });
@@ -153,7 +153,7 @@ TEST(TimeStepper, TimeAdvancesByDt) {
 TEST(TimeStepper, MaxDecaysNoUndershootBackwardEuler) {
   Harness h(9);  // (0.5,0.5) is a node; IC peak = 1 there
   auto zero = [](const Vec2&, Real) { return Real(0); };
-  aether::solver::TimeStepper s(h.mesh, *h.assembler.stiffness_matrix(), *h.assembler.mass_matrix(),
+  aether::solver::TimeStepper s(h.mesh, h.assembler.stiffness_matrix(), h.assembler.mass_matrix(),
                                 AllDirichlet(zero),
                                 /*theta=*/1.0, /*dt=*/0.005, /*scale=*/1.0);
   s.set_initial_condition(
@@ -172,7 +172,7 @@ TEST(TimeStepper, MaxDecaysNoUndershootBackwardEuler) {
 TEST(TimeStepper, BackwardEulerStableForHugeDt) {
   Harness h(9);
   auto zero = [](const Vec2&, Real) { return Real(0); };
-  aether::solver::TimeStepper s(h.mesh, *h.assembler.stiffness_matrix(), *h.assembler.mass_matrix(),
+  aether::solver::TimeStepper s(h.mesh, h.assembler.stiffness_matrix(), h.assembler.mass_matrix(),
                                 AllDirichlet(zero),
                                 /*theta=*/1.0, /*dt=*/1.0, /*scale=*/1.0);  // dt >> any CFL bound
   s.set_initial_condition(
@@ -193,10 +193,10 @@ TEST(TimeStepper, PositiveSourceHeatsInterior) {
   // Assemble a constant load (f == 1) vector; rhs_ was zeroed by assemble_stiffness.
   auto one = [](const Vec2&, Real) { return Real(1); };
   h.assembler.assemble_load(one);
-  const Eigen::VectorX<Real> b = *h.assembler.rhs();
+  const Eigen::VectorX<Real> b = h.assembler.rhs();
 
   auto zero = [](const Vec2&, Real) { return Real(0); };
-  aether::solver::TimeStepper s(h.mesh, *h.assembler.stiffness_matrix(), *h.assembler.mass_matrix(),
+  aether::solver::TimeStepper s(h.mesh, h.assembler.stiffness_matrix(), h.assembler.mass_matrix(),
                                 AllDirichlet(zero),
                                 /*theta=*/1.0, /*dt=*/0.01, /*scale=*/1.0);
   s.set_initial_condition([](const Vec2&) { return Real(0); });
@@ -216,7 +216,7 @@ TEST(TimeStepper, PositiveSourceHeatsInterior) {
 TEST(TimeStepper, DecayMmsErrorIsSmall) {
   Harness h(17);  // h = 1/16
   auto zero = [](const Vec2&, Real) { return Real(0); };
-  aether::solver::TimeStepper s(h.mesh, *h.assembler.stiffness_matrix(), *h.assembler.mass_matrix(),
+  aether::solver::TimeStepper s(h.mesh, h.assembler.stiffness_matrix(), h.assembler.mass_matrix(),
                                 AllDirichlet(zero),
                                 /*theta=*/0.5, /*dt=*/0.0005, /*scale=*/1.0);
   s.set_initial_condition([](const Vec2& p) { return UExact(p, 0.0); });
@@ -234,15 +234,15 @@ TEST(TimeStepper, SpatialRefinementConvergesSecondOrder) {
   const int steps = 20;  // T = 0.01
 
   Harness h1(9);  // h = 1/8
-  aether::solver::TimeStepper s1(h1.mesh, *h1.assembler.stiffness_matrix(),
-                                 *h1.assembler.mass_matrix(), AllDirichlet(zero), 0.5, dt, 1.0);
+  aether::solver::TimeStepper s1(h1.mesh, h1.assembler.stiffness_matrix(),
+                                 h1.assembler.mass_matrix(), AllDirichlet(zero), 0.5, dt, 1.0);
   s1.set_initial_condition(ic);
   s1.advance(steps);
   const Real e1 = RmsError(h1, s1, &UExact);
 
   Harness h2(17);  // h = 1/16
-  aether::solver::TimeStepper s2(h2.mesh, *h2.assembler.stiffness_matrix(),
-                                 *h2.assembler.mass_matrix(), AllDirichlet(zero), 0.5, dt, 1.0);
+  aether::solver::TimeStepper s2(h2.mesh, h2.assembler.stiffness_matrix(),
+                                 h2.assembler.mass_matrix(), AllDirichlet(zero), 0.5, dt, 1.0);
   s2.set_initial_condition(ic);
   s2.advance(steps);
   const Real e2 = RmsError(h2, s2, &UExact);
